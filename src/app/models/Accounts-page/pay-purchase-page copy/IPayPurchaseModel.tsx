@@ -1,0 +1,182 @@
+import moment from 'moment'
+export interface IPayFundModel {
+  projectAmount: number
+  projectName: string
+  paymentID: number
+  projectNumber: string
+  projectTypeID: number
+  chequeDate: string
+  remainigAmt: number
+  cashAccountTypeID: number
+  email: string
+  vendorTypeID: number
+  cashAccountTypeName: string
+  cashAccountID: number
+  mobileNumber: number
+  invoiceNumber: string
+  receiveAmt: number
+  paidAmount: number
+  remainingAmt: number
+  amount: number
+  discription: string
+  vendorTypeName: string
+  cost: number
+  customerName: string
+  projecStatus: string
+  projectCategoryName: string
+  projectStatusName: string
+  workStatus: string
+  isActive: boolean
+  projectID: number
+  paymentDate: string
+  transactionModeID: number
+  transactionID: string
+  chequeBankName: string
+  chequeBankBranch: string
+  chequeAmount: number
+  chequeNumber: string
+  cashAccountBankID: number
+  projectInvoiceNo: string
+  description: string
+  filePath: string
+  createBy: number
+  ipAddress: string
+  tdsPercentage: number
+  isTdsDeduct: boolean
+  vendorID: number
+  vendorInvoiceNo: string
+  tdsAmount: number
+  afterTDSAmount: number
+  cgstPer: number
+  cgstVal: number
+  sgstVal: number
+  sgstPer: number
+  igstVal: number
+  igstPer: number
+  gstAmount: number
+  totalAmount: number
+  gstTypeID: number
+  finalAmount: number
+  afterGSTAmount: number
+  projectModeID: number
+  
+}
+
+export const payFundInitValues: IPayFundModel = {
+  projectName: '',
+  projectAmount: 0,
+  discription: '',
+  amount: 0,
+  remainingAmt: 0,
+  cost: 0,
+  paymentID: 0,
+  invoiceNumber: '',
+  vendorTypeName: '',
+  vendorTypeID: 0,
+  remainigAmt: 0,
+  cashAccountTypeID: 0,
+  cashAccountTypeName: '',
+  projectNumber: '',
+  projectTypeID: 0,
+  projecStatus: '',
+  projectCategoryName: '',
+  projectStatusName: '',
+  chequeDate: '',
+  cashAccountID: 0,
+  customerName: '',
+  email: '',
+  mobileNumber: 0,
+  receiveAmt: 0,
+  paidAmount: 0,
+  workStatus: '',
+  isActive: false,
+  projectID: 0,
+  paymentDate: moment(new Date()).format('YYYY-MM-DD'),
+  transactionModeID: 0,
+  transactionID: '',
+  chequeBankName: '',
+  chequeBankBranch: '',
+  chequeAmount: 0,
+  chequeNumber: '',
+  cashAccountBankID: 0,
+  projectInvoiceNo: '',
+  description: '',
+  filePath: '',
+  createBy: 0,
+  ipAddress: '',
+  vendorID: 0,
+  tdsPercentage: 10,
+  isTdsDeduct: false,
+  vendorInvoiceNo: '',
+  tdsAmount: 0,
+  afterTDSAmount: 0,
+  cgstPer: 0,
+  cgstVal: 0,
+  sgstVal: 0,
+  sgstPer: 0,
+  igstVal: 0,
+  igstPer: 0,
+  gstAmount: 0,
+  totalAmount: 0,
+  gstTypeID: 0,
+  finalAmount: 0,
+  afterGSTAmount: 0,
+  projectModeID: 0,
+
+}
+
+export interface IPurchasetModel {
+  purchaseID: number
+  vendorName: string
+  itemDescr: string
+  purchaseDate: string
+  itemAmount: string
+  remainingAmount: string
+  paidAmount: number
+  totalAmount: number
+  documentPath: string
+  voucherNo: string
+  itemQty: number
+  itemName: string
+  purchaseOrdrNo: string
+  unitID: number
+  unitName: string
+}
+
+export interface IPayPurchasetModel {
+  purchasePaymentID: number
+  createBy: number
+  purchaseID: number
+  vendorID: number
+  transactionModeID: number
+  amount: number
+  transactionID: string
+  createByName: string
+  paymentDate: string
+  projectInvoiceNo: string
+  voucherNo: string
+  filePath: string
+  itemName: string
+  purchaseOrdrNo: string
+  customeName: string
+  cashAccountName: string
+  transactionMode: string
+  vendorName: string
+  contactPerson: string
+  subTotal:number
+  isGST:boolean
+  gstAmount:number
+  gstPer:number
+  tdsAmount:number
+  tdsPercentage:number
+  isTDSDeducted:boolean
+  sgstPer:number
+  gstTypeID:number
+  totalGstPer:number
+  totalGstPerigstPer:number
+  igstPer:number
+  finalAmount:number
+
+ 
+
+}

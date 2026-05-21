@@ -1,0 +1,109 @@
+//
+// Theme style
+//
+
+// Mode
+$mode: default;
+
+// Initialize
+@import 'init';
+
+// Components
+@import './core/components/components';
+@import 'components/components';
+
+// Layout
+@import 'layout/layout';
+@import './core/layout/docs/layout';
+
+.lineHeightByD {
+  line-height: 0.8;
+}
+
+.bg_dark {
+  background-color: #000000;
+}
+
+// show-hide left menu : by deep
+
+// .showleftmenu
+// {
+//     display: "";
+// }
+// .hideleftmenu
+// {
+//     display: none;
+// }
+// for set left and top of wall visibility div
+// .Wallvisibility
+// {
+//     transform: translate(-620px,264px)!important;
+
+// }
+
+// .gradient-background2 {
+//     background: linear-gradient(268deg,#716c6c,#ffffff,#6d6767,#b7a0a0);
+//     background-size: 240% 240%;
+//     animation: gradient-animation 4s ease infinite;
+//   }
+
+//   @keyframes gradient-animation {
+//     0% {
+//       background-position: 0% 50%;
+//     }
+//     50% {
+//       background-position: 100% 50%;
+//     }
+//     100% {
+//       background-position: 0% 50%;
+//     }
+//   }
+.pulse3 {
+  display: inline-block;
+  color: #000;
+  background: #ffce54;
+  text-decoration: none;
+}
+
+.pulse3:hover {
+  text-decoration: none;
+  color: #000;
+}
+
+/*===================*/
+/* PULSE GROW
+/*===================*/
+
+@-webkit-keyframes pulse2-grow-on-hover {
+  to {
+    -webkit-transform: scale(1.1);
+    transform: scale(1.1);
+  }
+}
+@keyframes pulse2-grow-on-hover {
+  to {
+    -webkit-transform: scale(1.1);
+    transform: scale(1.1);
+  }
+}
+.pulse2-grow-on-hover {
+  display: inline-block;
+  vertical-align: middle;
+  -webkit-transform: perspective(1px) translateZ(0);
+  transform: perspective(1px) translateZ(0);
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0);
+}
+.pulse2-grow-on-hover:hover,
+.pulse2-grow-on-hover:focus,
+.pulse2-grow-on-hover:active {
+  -webkit-animation-name: pulse2-grow-on-hover;
+  animation-name: pulse2-grow-on-hover;
+  -webkit-animation-duration: 0.3s;
+  animation-duration: 0.3s;
+  -webkit-animation-timing-function: linear;
+  animation-timing-function: linear;
+  -webkit-animation-iteration-count: infinite;
+  animation-iteration-count: infinite;
+  -webkit-animation-direction: alternate;
+  animation-direction: alternate;
+}

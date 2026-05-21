@@ -1,0 +1,29 @@
+export interface IProjectDeadlineModel {
+  vendorAgencyWorkStageID: number
+  stageID: number
+  projectID: number
+  vendorID: number
+  stageName: string
+  projectName: string
+  companyName: string
+  contactPerson: string
+  customerName: string
+  mobileNumber: string
+  projectCategoryID: number
+  customerID: number
+  seqNo: number
+  isCompleted: boolean
+  supervisorID: number
+  approvalBy: number
+  stageCompleteDate: string
+  isStageApprove: boolean
+  approveStageChangeDate: string
+  approveByName: string
+  supervisorName: string
+  targetDate: string
+  targetDateApproveDate: string
+  isTargetDateApprove: boolean
+  isTargetDate: boolean
+  quotationCategoryName: string
+  projectCategory: string
+}

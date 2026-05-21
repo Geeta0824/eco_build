@@ -1,0 +1,913 @@
+import React, {useEffect, useState} from 'react'
+import * as Yup from 'yup'
+import {useFormik} from 'formik'
+import {UserModel} from '../../../modules/auth/models/UserModel'
+import {shallowEqual, useSelector} from 'react-redux'
+import {RootState} from '../../../../setup'
+import {
+  IModularProductCateDropdown,
+  IModularProductMasterModel,
+  modularProductInitValue as initialValues,
+} from '../../../models/modular-product-page/modular-product/IModularProductModel'
+import {useParams, useHistory, Link, useLocation} from 'react-router-dom'
+import {toast} from 'react-toastify'
+import Loader from '../../common-pages/Loader'
+import {getActiveUnit} from '../../../modules/master-page/unit-master-page/UnitCRUD'
+import {IUnitModel} from '../../../models/master-page/IUnitModel'
+import {
+  getModularProductByModularproductID,
+  getModularProductCategoryByModularTypeIDAPI,
+  updateModularProductAPI,
+} from '../../../modules/modular-product-page/modular-product/ModularProductCRUD'
+import {IModularTypeModel} from '../../../models/modular-product-page/modular-product-category/IModularProductCategoryModel'
+import {getModularTypeListApi} from '../../../modules/modular-product-page/modular-product-category/ModularProductCategoryCRUD'
+import {getAllAgencyType} from '../../../modules/product-master-page/agency-type-master-page/AgencyTypeCRUD'
+import {IAgencyTypeModel} from '../../../models/product-page/IAgencyTypeModel'
+
+const profileDetailsSchema = Yup.object().shape({
+  productCategoryID: Yup.number()
+    .required('Product category is required')
+    .min(1, 'Product category is required'),
+  modularTypeID: Yup.number()
+    .required('Modular Type is required')
+    .min(1, 'Modular Type is required'),
+  defaultUnitID: Yup.number()
+    .required('Default unit is required')
+    .min(1, 'defaultUnitID is required'),
+  productName: Yup.string().required('Product Name is required'),
+  description: Yup.string().required('Description is required'),
+  // length: Yup.number().required('Length is required').min(1, 'Length is required'),
+  // height: Yup.number().required('Height is required').min(1, 'Height is required'),
+  // depth: Yup.number().required('Depth is required').min(1, 'Depth is required'),
+  sqft: Yup.number().required('No of unit is required').min(1, 'No of unit is required'),
+  pricePerSqFt: Yup.number()
+    .required('Price per unit is required')
+    .min(1, 'Price per unit is required'),
+})
+
+interface INatio {
+  loading: boolean
+  modularProductCategoryData: IModularProductCateDropdown[]
+  defualtUnitData: IUnitModel[]
+  modularTypeData: IModularTypeModel[]
+  agencyTypeData: IAgencyTypeModel[]
+  selProductCategoryID: number
+  selUnitID: number
+  selModularTypeID: number
+  selAgencyTypeId: number
+  mainProductCategoryID: number
+  mainUnitID: number
+  mainSearch: string
+}
+
+const EditModularProduct: React.FC = () => {
+  const location = useLocation()
+  const {productMasterID} = useParams<{productMasterID: string}>()
+  const history = useHistory()
+  const [fileLoader, setFileLoader] = useState<boolean>(false)
+  const [isHeight, setHeight] = useState<boolean>(false)
+  const [isMandatory, setIsMandatory] = useState<boolean>(false)
+  const [askForQuote, setAskForQuote] = useState<boolean>(false)
+  const [isActive, setIsActive] = useState<boolean>(false)
+  const [filePath, setFilePath] = useState<string>('')
+  const [data, setData] = useState<IModularProductMasterModel>(initialValues)
+  const updateData = (fieldsToUpdate: Partial<IModularProductMasterModel>): void => {
+    const updatedData = Object.assign(data, fieldsToUpdate)
+    setData(updatedData)
+  }
+
+  const [state, setState] = useState<INatio>({
+    loading: false,
+    modularProductCategoryData: [] as IModularProductCateDropdown[],
+    defualtUnitData: [] as IUnitModel[],
+    modularTypeData: [] as IModularTypeModel[],
+    agencyTypeData: [] as IAgencyTypeModel[],
+    selProductCategoryID: 0,
+    selUnitID: 0,
+    selModularTypeID: 0,
+    selAgencyTypeId: 0,
+    mainProductCategoryID: 0,
+    mainUnitID: 0,
+    mainSearch: '',
+  })
+  const user: UserModel = useSelector<RootState>(({auth}) => auth.user, shallowEqual) as UserModel
+
+  useEffect(() => {
+    setState({...state, loading: true})
+    setTimeout(() => {
+      let lc: any = location.state
+      console.log(lc)
+      var mainProductCategoryID: number = 0
+      var mainUnitID: number = 0
+      var mainSearch: string = ''
+      if (
+        lc.mainProductCategoryID !== undefined ||
+        lc.mainUnitID !== undefined ||
+        lc.mainSearch !== undefined
+      ) {
+        mainProductCategoryID = lc.mainProductCategoryID
+        mainUnitID = lc.mainUnitID
+        mainSearch = lc.mainSearch
+      }
+      getUnitTypeData(mainProductCategoryID, mainUnitID, mainSearch)
+    }, 100)
+  }, [])
+
+  function getUnitTypeData(mainProductCategoryID: number, mainUnitID: number, mainSearch: string) {
+    getActiveUnit()
+      .then((response) => {
+        if (response.data.isSuccess == true) {
+          let responseData = response.data.responseObject
+          agencyDropDownTypeData(responseData, mainProductCategoryID, mainUnitID, mainSearch)
+        } else {
+          toast.error(`${response.data.message}`)
+          setState({...state, defualtUnitData: [], loading: false})
+        }
+      })
+      .catch((error) => {
+        toast.error(`${error}`)
+        setState({...state, defualtUnitData: [], loading: false})
+      })
+  }
+
+  function agencyDropDownTypeData(
+    defualtUnitData: IUnitModel[],
+    mainProductCategoryID: number,
+    mainUnitID: number,
+    mainSearch: string
+  ) {
+    getAllAgencyType()
+      .then((response) => {
+        if (response.data.isSuccess == true) {
+          let responseData = response.data.responseObject
+          getModularTypeDatas(
+            responseData,
+            defualtUnitData,
+            mainProductCategoryID,
+            mainUnitID,
+            mainSearch
+          )
+        } else {
+          toast.error(`${response.data.message}`)
+          setState({...state, agencyTypeData: [], loading: false})
+        }
+      })
+      .catch((error) => {
+        toast.error(`${error}`)
+        setState({...state, agencyTypeData: [], loading: false})
+      })
+  }
+  function getModularTypeDatas(
+    agencyTypeData: IAgencyTypeModel[],
+    defualtUnitData: IUnitModel[],
+    mainProductCategoryID: number,
+    mainUnitID: number,
+    mainSearch: string
+  ) {
+    getModularTypeListApi()
+      .then((response) => {
+        if (response.data.isSuccess == true) {
+          let responseData = response.data.responseObject
+          getModularProductDataByProductMasterId(
+            agencyTypeData,
+            defualtUnitData,
+            responseData,
+            mainProductCategoryID,
+            mainUnitID,
+            mainSearch
+          )
+        } else {
+          toast.error(`${response.data.message}`)
+          setState({...state, modularTypeData: [], loading: false})
+        }
+      })
+      .catch((error) => {
+        toast.error(`${error}`)
+        setState({...state, modularTypeData: [], loading: false})
+      })
+  }
+
+  function getModularProductDataByProductMasterId(
+    agencyTypeData: IAgencyTypeModel[],
+    defualtUnitData: IUnitModel[],
+    modularTypeData: IModularTypeModel[],
+    mainProductCategoryID: number,
+    mainUnitID: number,
+    mainSearch: string
+  ) {
+    getModularProductByModularproductID(productMasterID)
+      .then((response) => {
+        if (response.data.isSuccess == true) {
+          formik.setFieldValue('productCategoryID', response.data.productCategoryID)
+          formik.setFieldValue('description', response.data.description)
+          formik.setFieldValue('productName', response.data.productName)
+          formik.setFieldValue('length', response.data.length)
+          formik.setFieldValue('height', response.data.height)
+          formik.setFieldValue('depth', response.data.depth)
+          formik.setFieldValue('sqft', response.data.sqft)
+          formik.setFieldValue('pricePerSqFt', response.data.pricePerSqFt)
+          formik.setFieldValue('agnecyPrice', response.data.agnecyPrice)
+          formik.setFieldValue('defaultUnitID', response.data.defaultUnitID)
+          formik.setFieldValue('modularTypeID', response.data.modularTypeID)
+          formik.setFieldValue('agencyTypeID', response.data.agencyTypeID)
+          setFilePath(response.data.photoPath)
+          setIsActive(response.data.isActive)
+          setHeight(response.data.isHeightChange)
+          setIsMandatory(response.data.isMandatory)
+          setAskForQuote(response.data.isAskForQuote)
+          getProductDocumentDatas(
+            agencyTypeData,
+            defualtUnitData,
+            modularTypeData,
+            response.data.modularTypeID,
+            response.data.defaultUnitID,
+            response.data.productCategoryID,
+            response.data.agencyTypeID,
+            mainProductCategoryID,
+
+            mainUnitID,
+            mainSearch
+          )
+        } else {
+          toast.error(`${response.data.message}`)
+          setState({...state, loading: false})
+        }
+      })
+      .catch((error) => {
+        toast.error(`${error}`)
+        setState({...state, loading: false})
+      })
+  }
+
+  function getProductDocumentDatas(
+    agencyTypeData: IAgencyTypeModel[],
+    defualtUnitData: IUnitModel[],
+    modularTypeData: IModularTypeModel[],
+    temModularTypeID: number,
+    temDefaultUnitID: number,
+    temProductCategoryID: number,
+    tmpAgencyTypeID: number,
+    mainProductCategoryID: number,
+    mainUnitID: number,
+    mainSearch: string
+  ) {
+    getModularProductCategoryByModularTypeIDAPI(temModularTypeID)
+      .then((response) => {
+        if (response.data.isSuccess == true) {
+          let responseData = response.data.responseObject
+          setState({
+            ...state,
+
+            modularProductCategoryData: responseData,
+            agencyTypeData: agencyTypeData,
+            defualtUnitData: defualtUnitData,
+
+            modularTypeData: modularTypeData,
+            selModularTypeID: temModularTypeID,
+            selUnitID: temDefaultUnitID,
+            selProductCategoryID: temProductCategoryID,
+            selAgencyTypeId: tmpAgencyTypeID,
+            mainProductCategoryID,
+
+            mainUnitID,
+            mainSearch,
+            loading: false,
+          })
+        } else {
+          toast.error(`${response.data.message}`)
+          setState({...state, modularProductCategoryData: [], loading: false})
+        }
+      })
+      .catch((error) => {
+        toast.error(`${error}`)
+        setState({...state, modularProductCategoryData: [], loading: false})
+      })
+  }
+
+  function getModularProductCategoryDataByModularTypeID(modularTypeID: number) {
+    state.selModularTypeID = 0
+    getModularProductCategoryByModularTypeIDAPI(modularTypeID)
+      .then((response) => {
+        if (response.data.isSuccess == true) {
+          let responseData = response.data.responseObject
+          setState({
+            ...state,
+            modularProductCategoryData: responseData,
+            selModularTypeID: modularTypeID,
+            loading: false,
+          })
+        } else {
+          toast.error(`${response.data.message}`)
+          setState({...state, modularProductCategoryData: [], loading: false})
+        }
+      })
+      .catch((error) => {
+        toast.error(`${error}`)
+        setState({...state, modularProductCategoryData: [], loading: false})
+      })
+  }
+
+  // -----------------upload photo----------------------
+  const imageUpload = (e: any) => {
+    setFileLoader(true)
+    e.preventDefault()
+    const formData = new FormData()
+    formData.append('file', e.target.files[0], e.target.files[0].name)
+    fetch(process.env.REACT_APP_API_URL + '/ModularProduct/SaveModularProductPhoto', {
+      method: 'POST',
+      body: formData,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setFilePath(data)
+        setFileLoader(false)
+      })
+  }
+
+  function checkedIsHeight(event: any) {
+    setHeight(event.target.checked)
+  }
+  function checkedIsMandatory(event: any) {
+    setIsMandatory(event.target.checked)
+  }
+  function checkedAskForQuote(event: any) {
+    setAskForQuote(event.target.checked)
+  }
+  function checkedFunction(event: any) {
+    setIsActive(event.target.checked)
+  }
+
+  // -----------------dropdown select----------------------
+  const selectChange = (event: any) => {
+    const value = event.target.value
+    const elementId = event.target.id
+    if (elementId === 'defaultUnitID') {
+      setState({...state, selUnitID: parseInt(value)})
+      formik.setFieldValue('defaultUnitID', parseInt(value))
+    } else if (elementId === 'productCategoryID') {
+      setState({...state, selProductCategoryID: parseInt(value)})
+      formik.setFieldValue('productCategoryID', parseInt(value))
+    } else if (elementId === 'modularTypeID') {
+      formik.setFieldValue('modularTypeID', parseInt(value))
+      getModularProductCategoryDataByModularTypeID(parseInt(value))
+    } else if (elementId === 'agencyTypeID') {
+      // let tmpAgnecyPrice: number = 0
+      // let tmpAdminyPrice: number = 0
+      // let tmpCom: number = 0
+
+      // tmpAgnecyPrice = tmpAdminyPrice - tmpCom
+      // console.log(tmpAgnecyPrice)
+
+      // setState({...state, selAgencyTypeId: parseInt(value)})
+      // formik.setFieldValue('agencyTypeID', parseInt(value))
+      // formik.setFieldValue('agnecyPrice', tmpAgnecyPrice)
+      let tmpAgnecyPrice = 0
+      let tmpAdminyPrice = 0
+      let tmpCom = 0
+      let tmpNoOfUnit = formik.getFieldProps('sqft').value
+      let tmpPricePerUnit = formik.getFieldProps('pricePerSqFt').value
+      const adminComPerc = event.target.selectedOptions[0].lang
+
+      tmpAdminyPrice = tmpNoOfUnit * tmpPricePerUnit
+      //  console.log(tmpAdminyPrice)
+
+      tmpCom = (parseInt(adminComPerc) * tmpAdminyPrice) / 100
+      //  console.log(tmpCom)
+
+      tmpAgnecyPrice = tmpAdminyPrice - tmpCom
+      //  console.log(tmpAgnecyPrice)
+
+      setState({...state, selAgencyTypeId: parseInt(value)})
+      formik.setFieldValue('agencyTypeID', parseInt(value))
+      formik.setFieldValue('agnecyPrice', tmpAgnecyPrice)
+    }
+  }
+
+  function onLengthChange(e: any) {
+    let tmpValue = e.target.value
+    if (!isNaN(tmpValue)) {
+      const tmpheight = formik.values
+      let countMulti = (tmpValue * tmpheight.height * tmpheight.depth).toFixed(2)
+      formik.setFieldValue('length', tmpValue)
+      formik.setFieldValue('sqft', countMulti)
+    } else return
+  }
+
+  function onHeightChange(e: any) {
+    let tmpValue = e.target.value
+    if (!isNaN(tmpValue)) {
+      const tmpheight = formik.values
+      let countMulti = (tmpValue * tmpheight.length * tmpheight.depth).toFixed(2)
+      formik.setFieldValue('height', tmpValue)
+      formik.setFieldValue('sqft', countMulti)
+    }
+  }
+
+  function onDepthChange(e: any) {
+    let tmpValue = e.target.value
+    if (!isNaN(tmpValue)) {
+      const tmpDepth = formik.values
+      let countMulti = (tmpValue * tmpDepth.length * tmpDepth.height).toFixed(2)
+      formik.setFieldValue('depth', tmpValue)
+      formik.setFieldValue('sqft', countMulti)
+    }
+  }
+
+  function onNoOfUnitChange(e: any) {
+    let tmpValue = e.target.value
+    if (!isNaN(tmpValue)) {
+      formik.setFieldValue('sqft', tmpValue)
+    }
+  }
+
+  function onPricePerUnitChange(e: any) {
+    let tmpValue = e.target.value
+    if (!isNaN(tmpValue)) {
+      formik.setFieldValue('pricePerSqFt', tmpValue)
+    }
+  }
+
+  function onAgnecyPriceChange(e: any) {
+    let tmpValue = e.target.value
+    if (!isNaN(tmpValue)) {
+      formik.setFieldValue('agnecyPrice', tmpValue)
+    }
+  }
+
+  const [loading, setLoading] = useState(false)
+  const formik = useFormik<IModularProductMasterModel>({
+    initialValues,
+    validationSchema: profileDetailsSchema,
+    onSubmit: (values) => {
+      setLoading(true)
+      setTimeout(() => {
+        const Edit = window.confirm('Are you sure you want to update selected record')
+        if (Edit) {
+          updateModularProductAPI(
+            parseInt(productMasterID),
+            values.productCategoryID,
+            values.productName,
+            filePath,
+            values.description,
+            values.length,
+            values.height,
+            values.depth,
+            values.sqft,
+            values.pricePerSqFt,
+            values.defaultUnitID,
+            isHeight,
+            isMandatory,
+            askForQuote,
+            isActive,
+            values.modularTypeID,
+            '192.33.66',
+            user.employeeID,
+            values.agencyTypeID,
+            values.agnecyPrice
+          )
+            .then((response) => {
+              if (response.data.isSuccess === true) {
+                toast.success('Updated Successfull')
+                history.push({
+                  pathname: '/module/products/list',
+                  state: {
+                    ProductCategoryID: state.mainProductCategoryID,
+                    unitID: state.mainUnitID,
+                    search: state.mainSearch,
+                  },
+                })
+                setLoading(false)
+              } else {
+                toast.error(`${response.data.message}`)
+                setLoading(false)
+              }
+            })
+            .catch((error) => {
+              toast.error(`${error}`)
+              setLoading(false)
+            })
+        } else {
+          return setLoading(false)
+        }
+        // const updatedData = Object.assign(data, values)
+        // setData(updatedData)
+        setLoading(false)
+      }, 1000)
+    },
+  })
+
+  return (
+    <>
+      <Loader loading={state.loading} />
+      <div className='card mb-5 mb-xl-10'>
+        <div id='kt_account_profile_details' className='collapse show'>
+          <form onSubmit={formik.handleSubmit} noValidate className='form'>
+            <div className='card-body border-top p-9 ms-6'>
+              <div className='row mb-6'>
+                <label className='col-lg-2 col-form-label required fw-bold fs-6'>
+                  Modular Type:
+                </label>
+
+                <div className='col-lg-4 fv-row'>
+                  <select
+                    className='form-select bg-light-primary'
+                    aria-label='Default select example'
+                    onChange={selectChange}
+                    id='modularTypeID'
+                  >
+                    <option selected={0 === state.selModularTypeID ? true : false} value={0}>
+                      Select Modular type
+                    </option>
+                    {state.modularTypeData.length > 0 &&
+                      state.modularTypeData.map((data, index) => {
+                        return (
+                          <option
+                            key={index}
+                            value={data.modularTypeID}
+                            selected={data.modularTypeID === state.selModularTypeID ? true : false}
+                          >
+                            {data.modularTypeName}
+                          </option>
+                        )
+                      })}
+                  </select>
+                  {formik.touched.modularTypeID && formik.errors.modularTypeID && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.modularTypeID}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className='row mb-6'>
+                <label className='col-lg-2 col-form-label fw-bold fs-6'>Product Category:</label>
+                <div className='col-lg-4 fv-row'>
+                  <select
+                    className='form-select bg-light-primary'
+                    aria-label='Default select example'
+                    onChange={selectChange}
+                    id='productCategoryID'
+                  >
+                    <option selected={0 === state.selProductCategoryID ? true : false} value={0}>
+                      Select Product Category
+                    </option>
+                    {state.modularProductCategoryData.length > 0 &&
+                      state.modularProductCategoryData.map((data, index) => {
+                        return (
+                          <option
+                            key={index}
+                            value={data.productCategoryID}
+                            selected={
+                              data.productCategoryID === state.selProductCategoryID ? true : false
+                            }
+                          >
+                            {data.productCategoryName}
+                          </option>
+                        )
+                      })}
+                  </select>
+                  {formik.touched.productCategoryID && formik.errors.productCategoryID && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.productCategoryID}</div>
+                    </div>
+                  )}
+                </div>
+                {/* </div>
+
+              <div className='row mb-6'> */}
+                <label className='col-lg-2 col-form-label fw-bold fs-6'>Unit Type:</label>
+                <div className='col-lg-4 fv-row'>
+                  <select
+                    className='form-select bg-light-primary'
+                    aria-label='Default select example'
+                    onChange={selectChange}
+                    id='defaultUnitID'
+                  >
+                    <option selected={0 === state.selUnitID ? true : false} value={0}>
+                      Select Unit
+                    </option>
+                    {state.defualtUnitData.length > 0 &&
+                      state.defualtUnitData.map((data, index) => {
+                        return (
+                          <option
+                            key={index}
+                            value={data.unitID}
+                            selected={data.unitID === state.selUnitID ? true : false}
+                          >
+                            {data.unitName}
+                          </option>
+                        )
+                      })}
+                  </select>
+                  {formik.touched.defaultUnitID && formik.errors.defaultUnitID && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.defaultUnitID}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className='row mb-6'>
+                <label className='col-lg-2 col-form-label required fw-bold fs-6'>
+                  Product Name:
+                </label>
+                <div className='col-lg-10 fv-row'>
+                  <input
+                    type='text'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    placeholder='Product Name'
+                    {...formik.getFieldProps('productName')}
+                  />
+                  {formik.touched.productName && formik.errors.productName && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.productName}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className='row mb-6'>
+                <label className='col-lg-2 col-form-label required fw-bold fs-6'>
+                  Description:
+                </label>
+                <div className='col-lg-10 fv-row'>
+                  <textarea
+                    // type='text'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    placeholder='Description'
+                    {...formik.getFieldProps('description')}
+                  ></textarea>
+                  {formik.touched.description && formik.errors.description && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.description}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className='row mb-6'>
+                <label className='col-lg-2 col-form-label required fw-bold fs-6'>Length:</label>
+                <div className='col-lg-2 fv-row'>
+                  <input
+                    // type='number'
+                    type='text'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    placeholder='Length'
+                    onChange={(e) => onLengthChange(e)}
+                    value={formik.values.length}
+                    // {...formik.getFieldProps('length')}
+                  />
+                  {formik.touched.length && formik.errors.length && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.length}</div>
+                    </div>
+                  )}
+                </div>
+                {/* </div>
+              <div className='row mb-6'> */}
+                <label className='col-lg-1 col-form-label required fw-bold fs-6'>Height:</label>
+                <div className='col-lg-3 fv-row'>
+                  <input
+                    // type='number'
+                    type='text'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    placeholder='Height'
+                    // {...formik.getFieldProps('height')}
+                    onChange={(e) => onHeightChange(e)}
+                    value={formik.values.height}
+                  />
+                  {formik.touched.height && formik.errors.height && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.height}</div>
+                    </div>
+                  )}
+                </div>
+                {/* </div>
+              <div className='row mb-6'> */}
+                <label className='col-lg-1 col-form-label required fw-bold fs-6'>Depth:</label>
+                <div className='col-lg-3 fv-row'>
+                  <input
+                    // type='number'
+                    type='text'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    placeholder='Depth'
+                    // {...formik.getFieldProps('depth')}
+                    onChange={(e) => onDepthChange(e)}
+                    value={formik.values.depth}
+                  />
+                  {formik.touched.depth && formik.errors.depth && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.depth}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className='row mb-6'>
+                <label className='col-lg-2 col-form-label required fw-bold fs-6'>No Of Unit:</label>
+                <div className='col-lg-4 fv-row'>
+                  <input
+                    // type='number'
+                    type='text'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    placeholder='NoOfUnit'
+                    // {...formik.getFieldProps('sqft')}
+                    onChange={(e) => onNoOfUnitChange(e)}
+                    value={formik.values.sqft}
+                  />
+                  {formik.touched.sqft && formik.errors.sqft && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.sqft}</div>
+                    </div>
+                  )}
+                </div>
+                {/* </div>
+              <div className='row mb-6'> */}
+                <label className='col-lg-2 col-form-label required fw-bold fs-6'>
+                  Price Per Unit:
+                </label>
+                <div className='col-lg-4 fv-row'>
+                  <input
+                    // type='number'
+                    type='text'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    placeholder='PricePerSqFt'
+                    // {...formik.getFieldProps('pricePerSqFt')}
+                    onChange={(e) => onPricePerUnitChange(e)}
+                    value={formik.values.pricePerSqFt}
+                  />
+                  {formik.touched.pricePerSqFt && formik.errors.pricePerSqFt && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.pricePerSqFt}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className='row mb-6'>
+                <label className='col-lg-2 col-form-label required fw-bold fs-6'>
+                  Agency Type:
+                </label>
+                <div className='col-lg-4 fv-row'>
+                  <select
+                    className='form-select bg-light-primary'
+                    aria-label='Default select example'
+                    onChange={selectChange}
+                    id='agencyTypeID'
+                  >
+                    <option selected value={0}>
+                      Select Agency Type
+                    </option>
+                    {state.agencyTypeData.length > 0 &&
+                      state.agencyTypeData.map((data, index) => {
+                        return (
+                          <option
+                            key={index}
+                            value={data.agencyTypeID}
+                            lang={data.adminCommissionPercentage}
+                            selected={data.agencyTypeID === state.selAgencyTypeId ? true : false}
+                          >
+                            {data.agencyTypeName}
+                          </option>
+                        )
+                      })}
+                  </select>
+                  {formik.touched.agencyTypeID && formik.errors.agencyTypeID && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.agencyTypeID}</div>
+                    </div>
+                  )}
+                </div>
+                {/* </div><div className='row mb-6'> */}
+                <label className='col-lg-2 col-form-label required fw-bold fs-6'>
+                  Agency Price :
+                </label>
+                <div className='col-lg-4 fv-row'>
+                  <input
+                    // type='number'
+                    type='text'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    placeholder='Agency Price Per Unit'
+                    // {...formik.getFieldProps('pricePerSqFt')}
+                    onChange={(e) => onAgnecyPriceChange(e)}
+                    value={formik.values.agnecyPrice}
+                  />
+                  {formik.touched.agnecyPrice && formik.errors.agnecyPrice && (
+                    <div className='fv-plugins-message-container text-danger'>
+                      <div className='fv-help-block'>{formik.errors.agnecyPrice}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className='row mb-6'>
+                <label className='col-lg-2 col-form-label fw-bold fs-6'>
+                  <span className='d-block'>Upload File:</span>
+                  <p className='text-muted fs-7'> (allow only .png files)</p>
+                </label>
+                <div className={filePath === '' ? 'd-none' : 'col-lg-1 d-flex align-items-center'}>
+                  <div className='symbol symbol-45px me-5'>
+                    <img src={process.env.REACT_APP_API_URL + filePath} alt='img' />
+                  </div>
+                </div>
+                <div className={filePath === '' ? 'col-lg-10 fv-row' : 'col-lg-9 fv-row'}>
+                  <input
+                    type='file'
+                    accept='.png'
+                    className='form-control form-control-lg form-control-solid bg-light-primary'
+                    onChange={(e) => imageUpload(e)}
+                  />
+                </div>
+              </div>
+
+              <div className='row mb-6'>
+                <div className='row col-6'>
+                  <label className='col-lg-8 col-form-label fw-bold fs-6'>
+                    <span>Is Height Change</span>
+                  </label>
+                  <div className='col-lg-4 fv-row'>
+                    <div className='form-check form-switch'>
+                      <input
+                        className='form-check-input mt-3'
+                        type='checkbox'
+                        checked={isHeight}
+                        onChange={(e) => checkedIsHeight(e)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className='row col-6'>
+                  <label className='col-lg-8 col-form-label fw-bold fs-6'>
+                    <span>Is Mandatory</span>
+                  </label>
+                  <div className='col-lg-4 fv-row'>
+                    <div className='form-check form-switch'>
+                      <input
+                        className='form-check-input mt-3'
+                        type='checkbox'
+                        checked={isMandatory}
+                        onChange={(e) => checkedIsMandatory(e)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className='row mb-6'>
+                <div className='row col-6'>
+                  <label className='col-lg-8 col-form-label fw-bold fs-6'>
+                    <span className=''>isActive:</span>
+                  </label>
+                  <div className='col-lg-4 fv-row'>
+                    <div className='form-check form-switch'>
+                      <input
+                        className='form-check-input mt-3'
+                        type='checkbox'
+                        checked={isActive}
+                        onChange={(e) => checkedFunction(e)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className='row col-6'>
+                  <label className='col-lg-8 col-form-label fw-bold fs-6'>
+                    <span>Ask for Quote</span>
+                  </label>
+                  <div className='col-lg-4 fv-row'>
+                    <div className='form-check form-switch'>
+                      <input
+                        className='form-check-input mt-3'
+                        type='checkbox'
+                        checked={askForQuote}
+                        onChange={(e) => checkedAskForQuote(e)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className='card-footer d-flex justify-content-end py-6 px-9'>
+              <button type='submit' className='btn btn-success' disabled={loading || fileLoader}>
+                {!loading && !fileLoader && 'Save'}
+                {(loading || fileLoader) && (
+                  <span className='indicator-progress' style={{display: 'block'}}>
+                    Please wait...{' '}
+                    <span className='spinner-border spinner-border-sm align-middle ms-2'></span>
+                  </span>
+                )}
+              </button>
+              <Link
+                className='btn btn-danger ms-3'
+                to={{
+                  pathname: '/module/products/list',
+                  state: {
+                    ProductCategoryID: state.mainProductCategoryID,
+                    unitID: state.mainUnitID,
+                    search: state.mainSearch,
+                  },
+                }}
+              >
+                Cancel
+              </Link>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export {EditModularProduct}
